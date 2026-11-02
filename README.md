@@ -1,47 +1,74 @@
-# Super Goals
+<p align="center">
+  <a href="#how-it-works">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.svg">
+      <img src="assets/banner-light.svg" alt="Super Goals, a work queue for coding agents built on Linear. Goals run from Todo through worker lanes to Done or Blocked. An exclusive resource takes one worker at a time." width="100%">
+    </picture>
+  </a>
+</p>
 
-A small work queue for coding agents, built from two skills and Linear.
+<p align="center">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-12343B?style=flat-square"></a>
+  <img alt="Status: experimental" src="https://img.shields.io/badge/status-experimental-B87900?style=flat-square">
+  <img alt="Works with Claude Code" src="https://img.shields.io/badge/Claude_Code-supported-0E8A5F?style=flat-square">
+  <img alt="Works with Codex" src="https://img.shields.io/badge/Codex-supported-0E8A5F?style=flat-square">
+</p>
 
-You state goals. `super-goal-plan` turns each one into a short Linear issue that names
-a skill. `super-goal-run` works through the issues in priority order, firing each as
-its own worker session.
+<p align="center">
+  <a href="#how-it-works"><strong>How it works</strong></a> &nbsp;|&nbsp;
+  <a href="#install"><strong>Install</strong></a> &nbsp;|&nbsp;
+  <a href="#use-it"><strong>Use it</strong></a> &nbsp;|&nbsp;
+  <a href="#safety"><strong>Safety</strong></a>
+</p>
+
+You state goals. **`super-goal-plan`** turns each one into a short Linear issue that
+names a skill. **`super-goal-run`** works through the issues in priority order, firing
+each as its own worker session.
 
 There is no server or database. It's about 200 lines of agent instructions, plus
 Linear as the queue.
 
-> **Status: experimental.** The skills have been dry-run on paper, but this version
-> hasn't been run against a live Linear workspace yet. Start with `draft-only` issues.
+> [!WARNING]
+> **Experimental.** The skills have been dry-run on paper, but this version hasn't been
+> run against a live Linear workspace yet. Start with `draft-only` issues.
 
 ## How it works
 
-```text
-"Triage 20 open issues"
-        │
-        ▼
- super-goal-plan ──▶ Linear issue
-                     skill: issue-triage
-                     + prompt, end state, labels
-                            │
-                            ▼
-                     super-goal-run ──▶ one worker session per issue
-                            ▲                     │
-                            └── Done / Blocked ◀──┘
+```mermaid
+flowchart LR
+    goal([You state a goal]) --> plan[super-goal-plan]
+    plan --> backlog[Linear Backlog]
+    backlog -->|You review| todo[Todo]
+    todo --> run[super-goal-run]
+    run --> worker[Worker session runs the named skill]
+    worker -->|End state shown| done([Done])
+    worker -->|Needs a human| blocked([Blocked])
 ```
 
-- **One goal is one issue.** The body is a short prompt that names a skill and says how
-  to prove the work is finished.
-- **The skill does the work.** Issues don't contain procedures.
-- **Linear is the state machine.** Status is the queue, and labels hold the approval
-  mode and resource.
-- **Each goal gets a fresh session.** Claude Code workers use the native `/goal`
-  feature. Codex workers use `codex exec`, and other hosts get a fresh session or
-  subagent with the same condition.
-- **You release the work.** New issues start in Backlog, and the runner only pulls
-  Todo, so nothing runs until you've reviewed it.
-- **Exclusive resources are serialized.** If only one worker can use something at a
-  time, give it a `resource:` label. With several runners, add a lease tool. The
-  [contract](skills/super-goal-plan/references/control-plane-contract.md) defines what
-  that tool needs to do.
+| Idea | What it means |
+| :--- | :--- |
+| **One goal is one issue** | The body is a short prompt that names a skill and says how to prove the work is finished. |
+| **The skill does the work** | Issues don't contain procedures. Your installed skills own the steps. |
+| **Linear is the state machine** | Status is the queue, and labels hold the approval mode and resource. |
+| **Each goal gets a fresh session** | Claude Code workers use the native `/goal` feature. Codex workers use `codex exec`, and other hosts get a fresh session or subagent with the same condition. |
+| **You release the work** | New issues start in Backlog and the runner only pulls Todo, so nothing runs until you've reviewed it. |
+| **Exclusive resources are serialized** | If only one worker can use something at a time, give it a `resource:` label. With several runners, add a lease tool. The [contract](skills/super-goal-plan/references/control-plane-contract.md) defines what that tool needs to do. |
+
+### What an issue looks like
+
+**Title:** `Triage 20 open issues — issue-triage`
+
+**Labels:** `super-goal` `resource:none` `approval:draft-only`
+
+```text
+skill: issue-triage
+
+Triage the 20 oldest unlabeled issues in the acme/api repo.
+Use the skill's own labels and conventions.
+Done when each of the 20 issues has a proposed label in a comment on this Linear issue.
+```
+
+See [examples/backlog.md](examples/backlog.md) for more.
 
 ## Requirements
 
@@ -79,7 +106,7 @@ For Codex, pass `~/.codex/skills` instead. The skills are linked to your clone, 
 it in place. To try them in Claude Code for one session without installing, run
 `claude --plugin-dir /path/to/super-goals-oss` from anywhere.
 
-## Setup
+### Set up Linear
 
 In the Linear team that owns your project, add a `Blocked` status. Linear doesn't
 include one by default, and the runner stops if it can't find one. The planner creates
@@ -87,39 +114,44 @@ the labels, including all three approval labels.
 
 ## Use it
 
-1. Ask your agent to plan: *"Plan a super goal: triage the 20 oldest unlabeled issues
+1. **Plan.** Ask your agent: *"Plan a super goal: triage the 20 oldest unlabeled issues
    in acme/api, in the Linear project agent-queue."*
-2. Review the new issues in Backlog. Change any approval labels you want to raise, then
-   move the ones you want to run to Todo.
-3. Ask your agent to run: *"Run the super goals backlog in agent-queue for 2 hours."*
+2. **Review.** Check the new issues in Backlog. Change any approval labels you want to
+   raise, then move the ones you want to run to Todo.
+3. **Run.** Ask your agent: *"Run the super goals backlog in agent-queue for 2 hours."*
    It runs one worker at a time unless you ask for more. The time budget stops new
    workers, and running workers get to finish.
-4. Check anything that ended in Blocked. A `Waiting for approval` comment means a
-   `needs-approval` issue has its step prepared for you.
+4. **Check.** Look at anything that ended in Blocked. A `Waiting for approval` comment
+   means a `needs-approval` issue has its step prepared for you.
 
-To check a plan first, ask for a dry run. It describes what would happen without
-touching Linear.
-
-See [examples/backlog.md](examples/backlog.md) for sample issues.
+> [!TIP]
+> To check a plan first, ask for a dry run. It describes what would happen without
+> touching Linear.
 
 ## Safety
 
-Read this before running anything unattended.
+> [!IMPORTANT]
+> Read this before running anything unattended. These rules are agent instructions, so
+> they depend on the agent following them. They aren't enforced by code, and a worker
+> can still be misled by what it reads.
 
-**What it does:**
+### Approval modes
 
-- Issues default to `draft-only`. A missing or unknown approval label, or more than
-  one, is treated as `draft-only`.
+| Label | What a worker may do | How the issue ends |
+| :--- | :--- | :--- |
+| `approval:draft-only` (default) | Prepare and observe only. Nothing leaves its own files and the Linear issue. | Done, or Blocked with a reason |
+| `approval:needs-approval` | Prepare the irreversible step, comment it, and stop. | Blocked until a human takes over |
+| `approval:autonomous-with-bounds` | Act within the named skill's own bounds and stop conditions. | Done, or Blocked with a reason |
+
+### What's built in
+
+- A missing or unknown approval label, or more than one, is treated as `draft-only`.
 - Only the label sets the approval mode. The runner ignores issue text that tries to
   raise it and tells workers to do the same.
 - Issue bodies are never placed in a shell command. Workers read them from Linear.
 - The runner only pulls from the one project you name.
-- `needs-approval` workers prepare the irreversible step, comment it, and stop. The
-  issue settles as Blocked until a human takes over.
-- These rules are agent instructions, so they depend on the agent following them. They
-  aren't enforced by code. A worker can still be misled by what it reads.
 
-**What it doesn't do:**
+### What isn't
 
 - **No caps.** The runner doesn't count actions or limit volume.
 - **No dedupe.** It doesn't remember past work, so it won't stop a skill from repeating
@@ -128,6 +160,8 @@ Read this before running anything unattended.
   issues In Progress for you to review.
 
 Only use `autonomous-with-bounds` with a skill that enforces its own limits and dedupe.
+
+### Your responsibilities
 
 **Issue text becomes agent input.** Anyone who can edit or comment on issues in your
 project can influence what a worker does, so treat that access like write access to
@@ -138,7 +172,10 @@ approvals or sandboxing bypassed.
 messaging, posting, and account use. You're responsible for what your agents do with
 your accounts.
 
-## Layout
+## Project details
+
+<details>
+<summary><strong>Layout</strong></summary>
 
 ```text
 skills/
@@ -147,6 +184,7 @@ skills/
   super-goal-*/references/control-plane-contract.md   # shared, kept byte-identical
   super-goal-*/agents/openai.yaml                     # Codex interface
 examples/backlog.md                                   # sample issues
+assets/                                               # README banners
 scripts/
   install-skills.sh
   check-contract-sync.sh                              # guards the shared contract
@@ -157,7 +195,10 @@ scripts/
 The two contract copies must stay byte-identical so either skill can be installed on
 its own. Edit the `super-goal-plan` copy, then copy it over the other one.
 
-## Tests
+</details>
+
+<details>
+<summary><strong>Tests</strong></summary>
 
 ```bash
 scripts/smoke-test.sh
@@ -165,6 +206,8 @@ scripts/smoke-test.sh
 
 This checks the structure and required text of the skills. It doesn't touch Linear or
 run the loop.
+
+</details>
 
 ## License
 
