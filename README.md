@@ -36,13 +36,11 @@ Linear as the queue.
 
 ```mermaid
 flowchart LR
-    goal([You state a goal]) --> plan[super-goal-plan]
-    plan --> backlog[Linear Backlog]
-    backlog -->|You review| todo[Todo]
-    todo --> run[super-goal-run]
-    run --> worker[Worker session runs the named skill]
-    worker -->|End state shown| done([Done])
-    worker -->|Needs a human| blocked([Blocked])
+    goal([You state a goal]) --> plan[Plan creates Backlog issues]
+    plan -->|You review| todo[Todo]
+    todo --> run[Run fires one worker per issue]
+    run -->|End state shown| done([Done])
+    run -->|Needs a human| blocked([Blocked])
 ```
 
 | Idea | What it means |
