@@ -1,0 +1,18 @@
+{
+  "name": "super-goals",
+  "version": "0.1.0",
+  "description": "A Linear-backed work queue for coding agents: super-goal-plan turns stated goals into short issues that name a skill, and super-goal-run fires each one as its own worker session.",
+  "author": {
+    "name": "Ryan McNutt"
+  },
+  "homepage": "https://github.com/mcnutt1414/super-goals-oss",
+  "repository": "https://github.com/mcnutt1414/super-goals-oss",
+  "license": "MIT",
+  "keywords": [
+    "linear",
+    "agents",
+    "skills",
+    "work-queue",
+    "automation"
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Super Goal Run"
+  short_description: "Run a Linear goal queue with one worker per resource."
+  default_prompt: "Run the next ready super-goal issues from Linear."

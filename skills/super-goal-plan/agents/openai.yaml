@@ -1,0 +1,4 @@
+interface:
+  display_name: "Super Goal Plan"
+  short_description: "Turn stated goals into Linear issues that name a skill."
+  default_prompt: "Plan a super goal into Linear issues, one issue per goal."

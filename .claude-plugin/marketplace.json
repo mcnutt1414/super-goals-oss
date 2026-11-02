@@ -1,0 +1,13 @@
+{
+  "name": "super-goals",
+  "owner": {
+    "name": "Ryan McNutt"
+  },
+  "plugins": [
+    {
+      "name": "super-goals",
+      "source": "./",
+      "description": "A Linear-backed work queue for coding agents: plan goals as short issues, then run each as its own worker session."
+    }
+  ]
+}
